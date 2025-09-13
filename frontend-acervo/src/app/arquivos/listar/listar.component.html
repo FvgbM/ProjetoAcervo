@@ -1,0 +1,37 @@
+<div class="lista-arquivos-container">
+  <h2>Arquivos Disponíveis</h2>
+  
+  <div *ngIf="carregando" class="loading">
+    <p>Carregando arquivos...</p>
+  </div>
+  
+  <div *ngIf="erro" class="alert alert-danger">
+    {{ erro }}
+  </div>
+
+  <table *ngIf="arquivos.length > 0">
+    <thead>
+      <tr>
+        <th>Nome do Arquivo</th>
+        <th>Data de Envio</th>
+        <th>Enviado Por</th>
+        <th>Ações</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let arquivo of arquivos">
+        <td>{{ arquivo.nomeOriginal }}</td>
+        <td>{{ arquivo.dataEnvio | date:'dd/MM/yyyy HH:mm' }}</td>
+        <td>{{ arquivo.enviadoPor }}</td>
+        <td>
+          <button (click)="downloadArquivo(arquivo.id, arquivo.nomeOriginal)">Download</button>
+          <button (click)="excluirArquivo(arquivo.id)" class="btn-excluir">Excluir</button>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div *ngIf="arquivos.length === 0 && !carregando" class="no-files">
+    Nenhum arquivo disponível.
+  </div>
+</div>

@@ -1,0 +1,14 @@
+.main-content {
+  margin-top: 70px;
+  padding: 2rem;
+  min-height: calc(100vh - 70px);
+  background: #a03232;
+}
+
+
+@media (max-width: 768px) {
+  .main-content {
+    margin-top: 0;
+    padding: 1rem;
+  }
+}

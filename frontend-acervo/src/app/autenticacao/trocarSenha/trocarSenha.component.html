@@ -1,0 +1,71 @@
+<div class="container-recuperacao">
+  <h2>Troca de Senha</h2>
+
+  <div *ngIf="passoAtual === 'solicitacao'">
+    <form [formGroup]="formularioSolicitacao" (ngSubmit)="solicitarRecuperacao()">
+      <div class="campo-formulario">
+        <label>Email Institucional</label>
+        <input type="email" formControlName="email" placeholder="seu.email@fatec.sp.gov.br">
+      </div>
+
+      <button type="submit" [disabled]="formularioSolicitacao.invalid || carregando">
+        {{ carregando ? 'Enviando...' : 'Enviar Instruções' }}
+      </button>
+    </form>
+  </div>
+
+
+<div *ngIf="passoAtual === 'primeiroLogin'" class="login-container">
+  <h2>Primeiro Acesso - Alterar Senha</h2>
+  <p>Bem-vindo! Você precisa alterar sua senha temporária.</p>
+
+  <form [formGroup]="formularioPrimeiroLogin" (ngSubmit)="alterarSenhaPrimeiroLogin()">
+    <div class="form-group">
+      <input type="password" formControlName="novaSenha" placeholder="Nova senha" required>
+    </div>
+    
+    <div class="form-group">
+      <input type="password" formControlName="confirmarSenha" placeholder="Confirmar nova senha" required>
+    </div>
+
+    <button type="submit" [disabled]="formularioPrimeiroLogin.invalid || carregando">
+      {{ carregando ? 'Alterando...' : 'Alterar Senha' }}
+    </button>
+  </form>
+</div>
+
+  <div *ngIf="passoAtual === 'redefinicao'">
+    <form [formGroup]="formularioRedefinicao" (ngSubmit)="redefinirSenha()">
+      <div class="campo-formulario">
+        <label>Token de Recuperação</label>
+        <input type="text" formControlName="token" placeholder="Cole o token recebido por email">
+      </div>
+
+      <div class="campo-formulario">
+        <label>Nova Senha</label>
+        <input type="password" formControlName="novaSenha" placeholder="Mínimo 8 caracteres">
+      </div>
+
+      <div class="campo-formulario">
+        <label>Confirmar Nova Senha</label>
+        <input type="password" formControlName="confirmarSenha" placeholder="Repita a nova senha">
+      </div>
+
+      <button type="submit" [disabled]="formularioRedefinicao.invalid || carregando">
+        {{ carregando ? 'Processando...' : 'Redefinir Senha' }}
+      </button>
+    </form>
+  </div>
+
+  <div *ngIf="mensagemSucesso" class="mensagem-sucesso">
+    {{ mensagemSucesso }}
+  </div>
+
+  <div *ngIf="mensagemErro" class="mensagem-erro">
+    {{ mensagemErro }}
+  </div>
+
+  <a routerLink="/login" class="voltar-login">Voltar para Login</a>
+
+  
+</div>

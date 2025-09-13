@@ -1,0 +1,12 @@
+{"properties": [
+  {
+    "name": "diretorio.upload",
+    "type": "java.lang.String",
+    "description": "'diretorio.upload'"
+  },
+  {
+    "name": "seguranca.token.expirar",
+    "type": "java.lang.String",
+    "description": "'seguranca.token.expirar'"
+  }
+]}

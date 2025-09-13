@@ -1,0 +1,21 @@
+<div class="upload-container">
+  <h2>Enviar Arquivo PDF</h2>
+  
+  <div class="alert alert-success" *ngIf="mensagem">
+    {{ mensagem }}
+  </div>
+  
+  <div class="alert alert-danger" *ngIf="erro">
+    {{ erro }}
+  </div>
+
+  <div class="file-upload">
+    <input type="file" id="fileInput" (change)="onFileSelected($event)" accept=".pdf">
+    <label for="fileInput">Escolher Arquivo</label>
+    <span *ngIf="arquivoSelecionado">{{ arquivoSelecionado.name }}</span>
+  </div>
+
+  <button class="btn btn-primary" (click)="uploadArquivo()" [disabled]="!arquivoSelecionado">
+    Enviar Arquivo
+  </button>
+</div>
