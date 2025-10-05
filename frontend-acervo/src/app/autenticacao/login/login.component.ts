@@ -8,66 +8,7 @@ import { CommonModule } from '@angular/common';
   selector: 'app-login',
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule],
-  template: `
-    <div class="login-wrapper">
-      <div class="login-container">
-        <div class="login-logo">
-          <img 
-            src="assets/logo_Fatec.png" 
-            alt="Sistema Acervo" 
-            class="logo-main"
-          >
-        </div>
-        
-        <form [formGroup]="formularioLogin" (ngSubmit)="onSubmit()">
-          <div class="form-group">
-            <input 
-              type="email" 
-              formControlName="email" 
-              placeholder="seu.email@fatec.sp.gov.br" 
-              required
-              class="form-control"
-              [class.invalid]="email?.invalid && (email?.touched || email?.dirty)"
-            >
-            <div *ngIf="email?.invalid && (email?.touched || email?.dirty)" class="error-message">
-              <span *ngIf="email?.errors?.['required']">Email é obrigatório</span>
-              <span *ngIf="email?.errors?.['email']">Email inválido</span>
-            </div>
-          </div>
-          
-          <div class="form-group">
-            <input 
-              type="password" 
-              formControlName="senha" 
-              placeholder="Sua senha" 
-              required
-              class="form-control"
-              [class.invalid]="senha?.invalid && (senha?.touched || senha?.dirty)"
-            >
-            <div *ngIf="senha?.invalid && (senha?.touched || senha?.dirty)" class="error-message">
-              <span *ngIf="senha?.errors?.['required']">Senha é obrigatória</span>
-            </div>
-          </div>
-          
-          <button 
-            type="submit" 
-            class="btn btn-primary"
-            [disabled]="formularioLogin.invalid || carregando"
-          >
-            {{ carregando ? 'Carregando...' : 'Entrar' }}
-          </button>
-        </form>
-        
-        <div *ngIf="primeiroLogin" class="alert alert-info">
-          Primeiro login detectado. Você será redirecionado para alterar sua senha.
-        </div>
-        
-        <div *ngIf="mensagemErro" class="alert alert-error">
-          {{ mensagemErro }}
-        </div>
-      </div>
-    </div>
-  `,
+  templateUrl: './login.component.html',
   styleUrls: ['./login.component.css']
 })
 

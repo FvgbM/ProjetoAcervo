@@ -8,30 +8,8 @@ import { CommonModule } from '@angular/common';
   selector: 'app-dashboard',
   standalone: true,
   imports: [CommonModule],
-  template: `
-    <div class="dashboard">
-      <header>
-        <h1>Sistema Acervo</h1>
-        <button (click)="logout()">Sair</button>
-      </header>
-      
-      <main>
-        <h2>Bem-vindo, {{ usuario?.email }}</h2>
-        <p>Seu perfil: {{ usuario?.papel }}</p>
-        
-        <div class="dashboard-actions">
-          <button routerLink="/consultar" class="action-btn">
-            📋 Consultar Atas
-          </button>
-          
-          <button *ngIf="isColaborador" routerLink="/upload" class="action-btn">
-            ⬆️ Fazer Upload
-          </button>
-        </div>
-      </main>
-    </div>
-  `
-
+  templateUrl: './dashboard.component.html',
+  styleUrls: ['./dashboard.component.css']
 })
 
 export class DashboardComponent {
@@ -42,7 +20,7 @@ export class DashboardComponent {
     private autenticacaoService: AutenticacaoService,
     private router: Router) {
     this.usuario = this.autenticacaoService.getUsuario();
-    this.isColaborador = this.usuario?.papel === 'COLABORADOR';
+    this.isColaborador = this.usuario?.perfil === 'COLABORADOR';
 
     if (!this.usuario) {
       this.router.navigate(['/login']);

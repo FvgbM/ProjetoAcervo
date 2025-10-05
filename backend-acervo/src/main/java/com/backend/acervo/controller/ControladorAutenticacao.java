@@ -55,7 +55,7 @@ public class ControladorAutenticacao {
         
         
         System.out.println("Usuário autenticado: " + usuario.getEmail());
-        System.out.println("Papel: " + usuario.getPapel());
+        System.out.println("Papel: " + usuario.getPerfil());
         System.out.println("Nome: " + usuario.getNome());
         System.out.println("Primeiro login: " + usuario.isPrimeiroLogin());
         
@@ -65,13 +65,13 @@ public class ControladorAutenticacao {
                 "mensagem", "Você deve alterar sua senha no primeiro acesso",
                 "email", usuario.getEmail(),
                 "nome", usuario.getNome(),
-                "papel", usuario.getPapel().name()
+                "papel", usuario.getPerfil().name()
             ));
         }
         
         return ResponseEntity.ok(Map.of(
             "mensagem", "Login realizado com sucesso",
-            "papel", usuario.getPapel().name(),
+            "papel", usuario.getPerfil().name(),
             "nome", usuario.getNome(),
             "email", usuario.getEmail(),
             "primeiroLogin", false

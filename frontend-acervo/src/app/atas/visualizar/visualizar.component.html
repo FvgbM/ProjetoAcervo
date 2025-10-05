@@ -1,0 +1,94 @@
+<div class="container">
+      <div class="header">
+        <div class="header-left">
+          <button (click)="voltar()" class="btn btn-outline">
+            ← Voltar
+          </button>
+          <h1>Ata #{{ ata?.numeroAta }}</h1>
+        </div>
+        
+        <div class="header-actions" *ngIf="autenticacaoService.podeEditarAtas() && ata?.status === 'ATIVA'">
+          <a
+            class="btn btn-primary"
+            href="/atas/editar/{{ata?.id}}">
+            Editar Ata
+          </a>
+        </div>
+      </div>
+
+      <div *ngIf="carregando" class="loading">
+        Carregando ata...
+      </div>
+
+      <div *ngIf="erro && !carregando" class="error-state">
+        <p>{{ erro }}</p>
+        <button (click)="voltar()" class="btn btn-outline">
+          Voltar para Lista
+        </button>
+      </div>
+
+      <div *ngIf="ata && !carregando" class="ata-details">
+        <div class="detail-card">
+          <div class="detail-header">
+            <h2>Informações da Reunião</h2>
+            <span class="status-badge" [class.ativa]="ata.status === 'ATIVA'">
+              {{ ata.status }}
+            </span>
+          </div>
+
+          <div class="detail-grid">
+            <div class="detail-item">
+              <label>Número da Ata:</label>
+              <span class="value">#{{ ata.numeroAta }}</span>
+            </div>
+
+            <div class="detail-item">
+              <label>Data da Reunião:</label>
+              <span class="value">{{ ata.dataReuniao | date:'dd/MM/yyyy' }}</span>
+            </div>
+
+            <div class="detail-item">
+              <label>Data de Criação:</label>
+              <span class="value">{{ ata.criadoEm | date:'dd/MM/yyyy HH:mm' }}</span>
+            </div>
+
+            <div class="detail-item">
+              <label>Criado por:</label>
+              <span class="value">{{ ata.criadoPor?.nome || 'Sistema' }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="detail-card">
+          <h3>Pauta da Reunião</h3>
+          <div class="pauta-content">
+            {{ ata.pauta }}
+          </div>
+        </div>
+        <div class="detail-card" *ngIf="ata.participantes">
+          <h3>Participantes</h3>
+          <div class="participantes-content">
+            {{ ata.participantes }}
+          </div>
+        </div>
+        <div class="actions-footer">
+          <button (click)="voltar()" class="btn btn-outline">
+            Voltar para Lista
+          </button>
+          
+          <a
+            *ngIf="autenticacaoService.podeEditarAtas() && ata.status === 'ATIVA'"
+            class="btn btn-primary"
+            href="/atas/editar/{{ata.id}}">
+            Editar Ata
+          </a>
+
+          <button 
+            *ngIf="autenticacaoService.podeExcluirAtas() && ata.status === 'ATIVA'"
+            (click)="confirmarExclusao()"
+            class="btn btn-danger">
+            Excluir Ata
+          </button>
+        </div>
+      </div>
+    </div>

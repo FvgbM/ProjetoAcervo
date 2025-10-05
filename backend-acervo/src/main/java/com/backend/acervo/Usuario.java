@@ -21,32 +21,30 @@ public class Usuario {
     
     @Column(nullable = false, unique = true)
     private String email; // @fatec.sp.gov.br
-    
-    @Column(nullable = false)
-    private String senha;
-    
-    @Column(nullable = false)
-    private String nome;
-    
-    @Column(nullable = false, unique = true)
     private String rg; // RG.SP
     
     @Column(nullable = false)
+    private String senha;
+    private String nome;
+    private String status; // Ativo, Inativo, Pendente
     private boolean primeiroLogin = true;
-    
-    @Column(nullable = false)
     private boolean ativo = true;
-    
+ 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private Papel papel;
-    
-    public enum Papel {
-        ALUNO, PROFESSOR, COLABORADOR
+    private Perfil perfil;
+
+    public enum Perfil {
+        ALUNO, PROFESSOR, COLABORADOR, ADMIN
     }
-
     private String tokenRecuperacao;
-
     private LocalDateTime dataExpiracaoToken;
 
+    public enum StatusUsuario {
+       ATIVO, INATIVO, PENDENTE, BLOQUEADO
+    }
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private StatusUsuario statusUsuario = StatusUsuario.PENDENTE; // Valor padrão
 }

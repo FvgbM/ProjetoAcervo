@@ -1,21 +1,31 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable, BehaviorSubject, throwError } from 'rxjs';
-import { catchError } from 'rxjs/operators';
+import { catchError, tap } from 'rxjs/operators';
 import { environment } from '../environment';
+import { Usuario } from '../models/usuario.model';
 
 @Injectable({
   providedIn: 'root'
 })
 export class AutenticacaoService {
   private apiUrl = `${environment.apiUrl}/api/autenticacao`;
-  private currentUserSubject = new BehaviorSubject<any>(null);
+  private currentUserSubject = new BehaviorSubject<Usuario | null>(null);
   public currentUser = this.currentUserSubject.asObservable();
 
   constructor(private http: HttpClient) {
+    this.carregarUsuarioLocalStorage();
+  }
+
+  private carregarUsuarioLocalStorage(): void {
     const user = localStorage.getItem('currentUser');
     if (user) {
-      this.currentUserSubject.next(JSON.parse(user));
+      try {
+        this.currentUserSubject.next(JSON.parse(user));
+      } catch (e) {
+        console.error('Erro ao carregar usuário do localStorage:', e);
+        this.limparSessao();
+      }
     }
   }
 
@@ -27,22 +37,68 @@ export class AutenticacaoService {
           'Content-Type': 'application/json'
         })
       }).pipe(
-      catchError(error => {
-        console.error('Erro completo:', error);
-        console.error('Status:', error.status);
-        console.error('Mensagem:', error.message);
-        return throwError(() => error);
-      })
-    );
+        tap((response: any) => {
+          if (response && response.usuario) {
+            this.armazenarUsuario(response.usuario);
+          }
+        }),
+        catchError(error => {
+          console.error('Erro no login:', error);
+          return throwError(() => error);
+        })
+      );
+  }
+
+  private armazenarUsuario(usuario: Usuario): void {
+    localStorage.setItem('currentUser', JSON.stringify(usuario));
+    this.currentUserSubject.next(usuario);
   }
 
   logout(): void {
+    this.limparSessao();
+    this.http.post(`${this.apiUrl}/logout`, {}).subscribe();
+  }
+
+  private limparSessao(): void {
     localStorage.removeItem('currentUser');
     this.currentUserSubject.next(null);
   }
 
-  getCurrentUser(): any {
-    return this.currentUserSubject.value;
+  getUsuario(): any {
+  return this.currentUserSubject.value;
+}
+
+  estaLogado(): boolean {
+    return !!this.getUsuario();
+  }
+
+  isColaborador(): boolean {
+    const usuario = this.getUsuario();
+    return usuario?.perfil === 'COLABORADOR';
+  }
+
+  isProfessor(): boolean {
+    const usuario = this.getUsuario();
+    return usuario?.perfil === 'PROFESSOR';
+  }
+
+  isAluno(): boolean {
+    const usuario = this.getUsuario();
+    return usuario?.perfil === 'ALUNO';
+  }
+
+  isAdmin(): boolean {
+    const usuario = this.getUsuario();
+    return usuario?.perfil === 'ADMIN';
+  }
+
+  getPerfilUsuario(): string {
+    return this.getUsuario()?.perfil || '';
+  }
+
+  isPrimeiroAcesso(): boolean {
+    const usuario = this.getUsuario();
+    return usuario?.primeiroLogin || false;
   }
 
   trocarSenha(email: string, senhaAtual: string, novaSenha: string): Observable<any> {
@@ -56,7 +112,6 @@ export class AutenticacaoService {
       })
     );
   }
-
 
   redefinirSenha(token: string, novaSenha: string): Observable<any> {
     return this.http.post(`${this.apiUrl}/redefinir-senha`, 
@@ -82,11 +137,24 @@ export class AutenticacaoService {
     );
   }
 
-  estaLogado(): boolean {
-    return !!this.getCurrentUser();
+  atualizarPerfilUsuario(usuarioAtualizado: Usuario): void {
+    this.armazenarUsuario(usuarioAtualizado);
   }
 
-  getUsuario(): any {
-    return this.getCurrentUser();
+
+  podeCriarAtas(): boolean {
+    return this.isColaborador();
+  }
+
+  podeEditarAtas(): boolean {
+    return this.isColaborador();
+  }
+
+  podeExcluirAtas(): boolean {
+    return this.isColaborador();
+  }
+
+  podeGerenciarUsuarios(): boolean {
+    return this.isColaborador() || this.isAdmin();
   }
 }

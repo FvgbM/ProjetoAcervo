@@ -1,0 +1,95 @@
+ <div class="container">
+      <div class="header">
+        <h1>{{ ehEdicao ? 'Editar Ata' : 'Nova Ata' }}</h1>
+        <button routerLink="/atas/listar" class="btn btn-outline">
+          ← Voltar para Lista
+        </button>
+      </div>
+
+      <form (ngSubmit)="onSubmit()" #ataForm="ngForm" class="form-container">
+        <div class="form-group" *ngIf="ehEdicao && ata">
+          <label for="numeroAta">Número da Ata</label>
+          <input 
+            type="text" 
+            id="numeroAta"
+            [value]="ata.numeroAta"
+            class="form-control"
+            readonly>
+          <small class="form-text">Número sequencial não pode ser alterado</small>
+        </div>
+        <div class="form-group">
+          <label for="dataReuniao">Data da Reunião *</label>
+          <input 
+            type="date" 
+            id="dataReuniao"
+            name="dataReuniao"
+            [(ngModel)]="ataDTO.dataReuniao"
+            required
+            class="form-control"
+            [class.is-invalid]="submetido && !ataDTO.dataReuniao">
+          <div *ngIf="submetido && !ataDTO.dataReuniao" class="invalid-feedback">
+            Data da reunião é obrigatória.
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="pauta">Pauta da Reunião *</label>
+          <textarea 
+            id="pauta"
+            name="pauta"
+            [(ngModel)]="ataDTO.pauta"
+            required
+            minlength="10"
+            rows="4"
+            placeholder="Descreva os assuntos que serão tratados na reunião (mínimo 10 caracteres)"
+            class="form-control"
+            [class.is-invalid]="submetido && (!ataDTO.pauta || ataDTO.pauta.length < 10)">
+          </textarea>
+          <div class="form-text">
+            {{ ataDTO.pauta?.length || 0 }}/10 caracteres (mínimo)
+          </div>
+          <div *ngIf="submetido && !ataDTO.pauta" class="invalid-feedback">
+            Pauta é obrigatória.
+          </div>
+          <div *ngIf="submetido && ataDTO.pauta && ataDTO.pauta.length < 10" class="invalid-feedback">
+            Pauta deve ter no mínimo 10 caracteres.
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="participantes">Participantes</label>
+          <textarea 
+            id="participantes"
+            name="participantes"
+            [(ngModel)]="ataDTO.participantes"
+            rows="3"
+            placeholder="Liste os participantes da reunião (separados por vírgula ou ponto e vírgula)"
+            class="form-control">
+          </textarea>
+          <small class="form-text">
+            Ex: João Silva; Maria Santos; Pedro Costa
+          </small>
+        </div>
+        <div *ngIf="mensagemErro" class="alert alert-danger">
+          {{ mensagemErro }}
+        </div>
+
+        <div *ngIf="mensagemSucesso" class="alert alert-success">
+          {{ mensagemSucesso }}
+        </div>
+        <div class="form-actions">
+          <button 
+            type="button" 
+            (click)="cancelar()"
+            class="btn btn-outline">
+            Cancelar
+          </button>
+          
+          <button 
+            type="submit" 
+            [disabled]="processando"
+            class="btn btn-primary">
+            <span *ngIf="processando">Processando...</span>
+            <span *ngIf="!processando">{{ ehEdicao ? 'Atualizar Ata' : 'Criar Ata' }}</span>
+          </button>
+        </div>
+      </form>
+    </div>

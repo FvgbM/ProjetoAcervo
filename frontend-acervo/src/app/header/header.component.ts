@@ -7,50 +7,46 @@ import { AutenticacaoService } from '../autenticacao/autenticacao.service';
   selector: 'app-header',
   standalone: true,
   imports: [CommonModule, RouterModule],
-  template: `
-    <header class="header">
-      <div class="logo-container">
-        <img 
-          src="assets/logo_CPS2.png" 
-          alt="Logo Sistema Acervo" 
-          class="logo"
-          (error)="handleImageError($event)">
-
-      </div>
-      
-      <nav class="navigation" *ngIf="showNavigation">
-        <a routerLink="/dashboard" routerLinkActive="active">Dashboard</a>
-        <a routerLink="/consultar" routerLinkActive="active">Consultar Atas</a>
-        <a routerLink="/upload" routerLinkActive="active" *ngIf="isColaborador">Upload</a>
-      </nav>
-
-      <div class="user-info" *ngIf="usuario">
-        <span>Olá, {{ usuario.nome }}</span>
-        <button (click)="logout()">Sair</button>
-      </div>
-    </header>
-  `,
+  templateUrl: './header.component.html',
   styleUrls: ['./header.component.css']
 })
 export class HeaderComponent {
   usuario: any = null;
   showNavigation: boolean = false;
   isColaborador: boolean = false;
+  isAdmin: boolean = false;
 
-  constructor(private autenticacaoService: AutenticacaoService) {
+  constructor(private autenticacaoService: AutenticacaoService) {}
 
-    this.usuario = this.autenticacaoService.getCurrentUser();
+    ngOnInit(): void {
+    this.carregarUsuario();
+  }
+
+  carregarUsuario(): void {
+    this.usuario = this.autenticacaoService.getUsuario();
     this.showNavigation = !!this.usuario;
-    this.isColaborador = this.usuario?.papel === 'COLABORADOR';
+    this.isColaborador = this.autenticacaoService.isColaborador();
+    this.isAdmin = this.autenticacaoService.isAdmin();
   }
 
-  handleImageError(event: any) {
-    console.error('Erro ao carregar logo:', event);
-    event.target.style.display = 'none';
+  getPerfilLabel(): string {
+    const papeis: { [key: string]: string } = {
+      'ALUNO': 'Aluno',
+      'PROFESSOR': 'Professor',
+      'COLABORADOR': 'Colaborador',
+      'ADMIN': 'Administrador'
+    };
+    return papeis[this.usuario?.perfil || ''] || this.usuario?.perfil || '';
   }
 
-  logout() {
+  logout(): void {
     this.autenticacaoService.logout();
   }
+
+  handleImageError(event: any): void {
+    console.error('Erro ao carregar logo:', event);
+    event.target.src = 'assets/logo-default.png';
+  }
 }
+
 

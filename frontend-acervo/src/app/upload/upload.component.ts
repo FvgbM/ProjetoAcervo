@@ -30,9 +30,14 @@ export class UploadComponent {
       return;
     }
 
-    const usuario = this.autenticacaoService.getCurrentUser();
+    const usuario = this.autenticacaoService.getUsuario();
     if (!usuario) {
       this.erro = 'Usuário não autenticado';
+      return;
+    }
+
+    if (usuario.id === undefined || usuario.id === null) {
+      this.erro = 'ID do usuário inválido';
       return;
     }
 
@@ -46,7 +51,7 @@ export class UploadComponent {
           if (fileInput) fileInput.value = '';
         },
         error: (err) => {
-          this.erro = 'Erro ao enviar arquivo: ' + err.error?.message || err.message;
+          this.erro = 'Erro ao enviar arquivo: ' + (err.error?.message || err.message);
           this.mensagem = '';
         }
       });

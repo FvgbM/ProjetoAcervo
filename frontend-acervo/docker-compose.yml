@@ -1,0 +1,47 @@
+services:
+  db-acervo:
+    image: fabio2001/mysql-acervo
+    container_name: db-acervo
+    environment:
+      MYSQL_ROOT_PASSWORD: "#Trabuco01"
+      MYSQL_DATABASE: acervo_db
+    ports:
+      - "3306:3306"
+    networks:
+      - acervo-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p#Trabuco01"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  backend-acervo:
+    image: fabio2001/backend-acervo
+    container_name: backend-acervo
+    depends_on:
+      db-acervo:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    networks:
+      - acervo-network
+    environment:
+      DB_HOST: db-acervo
+      DB_USER: root
+      DB_PASSWORD: "#Trabuco01"
+      DB_NAME: acervo_db
+
+  frontend-acervo:
+    image: fabio2001/frontend-acervo
+    container_name: frontend-acervo
+    ports:
+      - "8080:80"
+    networks:
+      - acervo-network
+    depends_on:
+      - backend-acervo
+
+networks:
+  acervo-network:
+    driver: bridge

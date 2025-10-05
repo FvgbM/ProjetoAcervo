@@ -10,16 +10,28 @@ export const authGuard: CanActivateFn = (route, state) => {
     router.navigate(['/login'], { queryParams: { returnUrl: state.url } });
     return false;
   }
-  
-  const expectedRole = route.data['papel'];
-  if (expectedRole) {
-    const usuario = autenticacaoService.getUsuario();
-    if (usuario.papel !== expectedRole) {
+
+  const usuario = autenticacaoService.getUsuario();
+
+  if (usuario?.status !== 'ATIVO') {
+    router.navigate(['/conta-inativa']);
+    return false;
+  }
+
+  if (autenticacaoService.isPrimeiroAcesso() && !state.url.includes('/trocarsenha')) {
+    router.navigate(['/trocarsenha']);
+    return false;
+  }
+
+  const perfilEsperado = route.data['perfil'];
+  if (perfilEsperado) {
+    if (usuario?.perfil !== perfilEsperado) {
       router.navigate(['/acesso-negado']);
       return false;
     }
   }
-  
-  return true;
-};
+    return true;
 
+  };
+  
+  

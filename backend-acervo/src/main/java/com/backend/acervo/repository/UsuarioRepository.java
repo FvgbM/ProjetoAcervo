@@ -14,7 +14,10 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
     Optional<Usuario> findByTokenRecuperacao(String token);
     Optional<Usuario> findByRg(String rg);
     List<Usuario> findByAtivoTrue();
-    List<Usuario> findByPapel(Usuario.Papel papel);
+    List<Usuario> findByPerfil(Usuario.Perfil perfil);
+    List<Usuario> findByStatus(String status);
+    List<Usuario> findByNomeContainingIgnoreCase(String nome);
+    boolean existsByEmailAndStatus(String email, String status);
     
     @Query("SELECT u FROM Usuario u WHERE u.nome LIKE %:nome%")
     List<Usuario> buscarPorNomeContendo(@Param("nome") String nome);

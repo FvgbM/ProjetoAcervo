@@ -1,0 +1,90 @@
+<div class="container">
+      <div class="header">
+        <h1>Atas de Reunião</h1>
+        <button 
+          *ngIf="autenticacaoService.podeCriarAtas()"
+          routerLink="/atas/criar" 
+          class="btn btn-primary">
+          + Nova Ata
+        </button>
+      </div>
+
+      <div class="filters">
+        <div class="search-box">
+          <input 
+            type="text" 
+            placeholder="Buscar por pauta..." 
+            (input)="termoBusca = $any($event.target).value; filtrarAtas()">
+        </div>
+        
+        <div class="date-filters">
+        <input>
+          <input
+            type="date" 
+            (change)="dataInicio = $any($event.target).value; filtrarPorData()"
+            placeholder="Data início">
+          <input> 
+            type="date" 
+          <input 
+            type="date" 
+            (change)="dataFim = $any($event.target).value; filtrarPorData()"
+            placeholder="Data fim">
+
+      <div *ngIf="carregando" class="loading">
+        Carregando atas...
+      </div>
+
+      <div *ngIf="!carregando && atasFiltradas.length === 0" class="empty-state">
+        <p *ngIf="termoBusca || dataInicio || dataFim">
+          Nenhuma ata encontrada com os filtros aplicados.
+        </p>
+        <p *ngIf="!termoBusca && !dataInicio && !dataFim">
+          Nenhuma ata cadastrada ainda.
+        </p>
+      </div>
+
+      <div *ngIf="!carregando && atasFiltradas.length > 0" class="atas-list">
+        <div *ngFor="let ata of atasFiltradas" class="ata-card">
+          <div class="ata-header">
+            <h3>Ata #{{ ata.numeroAta }}</h3>
+            <span class="status" [class.ativa]="ata.status === 'ATIVA'">
+              {{ ata.status }}
+            </span>
+          </div>
+          
+          <div class="ata-content">
+            <p class="data">
+              <strong>Data:</strong> {{ ata.dataReuniao | date:'dd/MM/yyyy' }}
+            </p>
+            <p class="pauta">
+              <strong>Pauta:</strong> {{ ata.pauta }}
+            </p>
+            <p class="participantes" *ngIf="ata.participantes">
+              <strong>Participantes:</strong> {{ ata.participantes }}
+            </p>
+          </div>
+
+          <div class="ata-actions">
+            <button 
+              routerLink="/atas/visualizar/{{ata.id}}"
+              class="btn btn-outline">
+              Visualizar
+            </button>
+            
+            <button 
+              *ngIf="autenticacaoService.podeEditarAtas()"
+              routerLink="/atas/editar/{{ata.id}}"
+              class="btn btn-outline">
+              Editar
+            </button>
+
+            <button 
+              *ngIf="autenticacaoService.podeExcluirAtas() && ata.status === 'ATIVA'"
+              (click)="confirmarExclusao(ata)"
+              class="btn btn-danger">
+              Excluir
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>

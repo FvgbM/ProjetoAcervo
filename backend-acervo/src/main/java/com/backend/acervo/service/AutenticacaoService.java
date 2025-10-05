@@ -38,7 +38,7 @@ public class AutenticacaoService {
             admin.setSenha(codificadorSenha.encode("@Admin123"));
             admin.setNome("Administrador");
             admin.setRg("ADMIN.RG.SP");
-            admin.setPapel(Usuario.Papel.COLABORADOR);
+            admin.setPerfil(Usuario.Perfil.COLABORADOR);
             admin.setPrimeiroLogin(true);
             usuarioRepository.save(admin);
         }
@@ -107,7 +107,7 @@ public class AutenticacaoService {
         usuario.setDataExpiracaoToken(LocalDateTime.now().plusHours(2));
         usuarioRepository.save(usuario);
         
-        String linkRecuperacao = "http://seu-site.com/recuperar-senha?token=" + token;
+        String linkRecuperacao = "http://localhost:4200/recuperar-senha?token=" + token;
         emailService.enviarEmailRecuperacao(email, linkRecuperacao);
         
         logger.info("Email de recuperação enviado para: {}", email);

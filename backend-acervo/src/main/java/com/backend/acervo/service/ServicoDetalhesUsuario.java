@@ -41,7 +41,7 @@ public class ServicoDetalhesUsuario implements UserDetailsService {
     return User.builder()
             .username(usuario.getEmail())
             .password(usuario.getSenha())
-            .roles(usuario.getPapel().name())
+            .roles(usuario.getPerfil().name())
             .build();
 }
 }
