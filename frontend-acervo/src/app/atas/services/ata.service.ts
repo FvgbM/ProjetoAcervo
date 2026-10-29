@@ -1,41 +1,59 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
+
+import { environment } from '../../environment';
 import { Ata, AtaDTO } from '../../models/ata.model';
 
-@Injectable({
-  providedIn: 'root'
-})
+export type AtaPayload = AtaDTO;
+
+@Injectable({ providedIn: 'root' })
 export class AtaService {
-  private apiUrl = 'http://localhost:8080/api/atas';
+  private readonly apiUrl = `${environment.apiUrl}/api/atas`;
 
-  constructor(private http: HttpClient) { }
+  constructor(private readonly http: HttpClient) {}
 
-  criarAta(ata: AtaDTO): Observable<Ata> {
-    return this.http.post<Ata>(this.apiUrl, ata);
-  }
-
-  listarAtas(): Observable<Ata[]> {
-    return this.http.get<Ata[]>(this.apiUrl);
+  listar(): Observable<Ata[]> {
+    return this.http.get<Ata[]>(this.apiUrl, { withCredentials: true });
   }
 
   buscarPorId(id: number): Observable<Ata> {
-    return this.http.get<Ata>(`${this.apiUrl}/${id}`);
+    return this.http.get<Ata>(`${this.apiUrl}/${id}`, { withCredentials: true });
+  }
+
+  criar(payload: AtaPayload): Observable<Ata> {
+    return this.http.post<Ata>(this.apiUrl, payload, { withCredentials: true });
+  }
+
+  atualizar(id: number, payload: AtaPayload): Observable<Ata> {
+    return this.http.put<Ata>(`${this.apiUrl}/${id}`, payload, { withCredentials: true });
+  }
+
+  excluir(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/${id}`, { withCredentials: true });
   }
 
   buscarPorPeriodo(inicio: string, fim: string): Observable<Ata[]> {
-    return this.http.get<Ata[]>(`${this.apiUrl}/periodo?inicio=${inicio}&fim=${fim}`);
+    const params = new HttpParams().set('inicio', inicio).set('fim', fim);
+    return this.http.get<Ata[]>(`${this.apiUrl}/periodo`, { params, withCredentials: true });
   }
 
   buscarPorPauta(trechoPauta: string): Observable<Ata[]> {
-    return this.http.get<Ata[]>(`${this.apiUrl}/busca?pauta=${trechoPauta}`);
+    const params = new HttpParams().set('trechoPauta', trechoPauta);
+    return this.http.get<Ata[]>(`${this.apiUrl}/busca`, { params, withCredentials: true });
   }
 
-  atualizarAta(id: number, ata: AtaDTO): Observable<Ata> {
-    return this.http.put<Ata>(`${this.apiUrl}/${id}`, ata);
+  definirLiberacaoAlunos(id: number, liberada: boolean): Observable<Ata> {
+    const params = new HttpParams().set('liberada', String(liberada));
+    return this.http.patch<Ata>(
+      `${this.apiUrl}/${id}/liberacao-alunos`,
+      null,
+      { params, withCredentials: true }
+    );
   }
 
-  excluirAta(id: number): Observable<void> {
-    return this.http.delete<void>(`${this.apiUrl}/${id}`);
-  }
+  listarAtas(): Observable<Ata[]> { return this.listar(); }
+  criarAta(dto: AtaDTO): Observable<Ata> { return this.criar(dto); }
+  atualizarAta(id: number, dto: AtaDTO): Observable<Ata> { return this.atualizar(id, dto); }
+  excluirAta(id: number): Observable<void> { return this.excluir(id); }
 }

@@ -1,5 +1,9 @@
 package com.backend.acervo;
 
+import java.time.LocalDateTime;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -7,44 +11,55 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-// import jakarta.persistence.Table;
-import lombok.Data;
-import java.time.LocalDateTime;
+import jakarta.persistence.Table;
+import lombok.Getter;
+import lombok.Setter;
 
 @Entity
-@Data
+@Table(name = "usuarios")
+@Getter
+@Setter
 public class Usuario {
-    
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    
-    @Column(nullable = false, unique = true)
-    private String email; // @fatec.sp.gov.br
-    private String rg; // RG.SP
-    
-    @Column(nullable = false)
+
+    @Column(nullable = false, unique = true, length = 254)
+    private String email;
+
+    @Column(unique = true, length = 30)
+    private String rg;
+
+    @JsonIgnore
+    @Column(nullable = false, length = 100)
     private String senha;
+
+    @Column(nullable = false, length = 150)
     private String nome;
-    private String status; // Ativo, Inativo, Pendente
+
     private boolean primeiroLogin = true;
     private boolean ativo = true;
- 
+
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(length = 20)
     private Perfil perfil;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private StatusUsuario statusUsuario = StatusUsuario.PENDENTE;
+
+    @Column(name = "tentativas_falhas", nullable = false)
+    private int tentativasFalhas = 0;
+
+    @Column(name = "bloqueado_ate")
+    private LocalDateTime bloqueadoAte;
 
     public enum Perfil {
         ALUNO, PROFESSOR, COLABORADOR, ADMIN
     }
-    private String tokenRecuperacao;
-    private LocalDateTime dataExpiracaoToken;
 
     public enum StatusUsuario {
-       ATIVO, INATIVO, PENDENTE, BLOQUEADO
+        ATIVO, INATIVO, PENDENTE, BLOQUEADO
     }
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private StatusUsuario statusUsuario = StatusUsuario.PENDENTE; // Valor padrão
 }

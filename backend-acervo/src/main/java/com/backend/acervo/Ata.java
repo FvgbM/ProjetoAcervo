@@ -3,6 +3,8 @@ package com.backend.acervo;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import org.hibernate.annotations.CreationTimestamp;
+
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -13,6 +15,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 
 @Entity
@@ -35,6 +38,12 @@ public class Ata {
     @Column(nullable = false)
     private LocalDate dataReuniao;
 
+    @Column(nullable = false)
+    private boolean liberadaParaAlunos = false;
+
+    public boolean isLiberadaParaAlunos() { return liberadaParaAlunos; }
+    public void setLiberadaParaAlunos(boolean valor) { this.liberadaParaAlunos = valor; }
+
     // Pauta da reunião (metadado obrigatório, mínimo 10 caracteres - RN018)
     @Column(nullable = false, columnDefinition = "TEXT")
     private String pauta;
@@ -45,6 +54,9 @@ public class Ata {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "usuario_id", nullable = false)
     private Usuario criadoPor;
+
+    @OneToOne(mappedBy = "ata", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private Arquivo arquivo;
 
     // Data de criação do registro no sistema
     @CreationTimestamp
@@ -126,6 +138,14 @@ public class Ata {
 
     public void setStatus(StatusAta status) {
         this.status = status;
+    }
+
+    public Arquivo getArquivo() {
+        return arquivo;
+    }
+
+    public void setArquivo(Arquivo arquivo) {
+        this.arquivo = arquivo;
     }
 
     @Override

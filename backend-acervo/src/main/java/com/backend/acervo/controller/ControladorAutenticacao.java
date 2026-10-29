@@ -1,131 +1,128 @@
 package com.backend.acervo.controller;
 
-import com.backend.acervo.dto.*;
-import com.backend.acervo.RequisicaoLogin;
-import com.backend.acervo.Usuario;
-import com.backend.acervo.service.AutenticacaoService;
-import com.backend.acervo.repository.UsuarioRepository;
+import java.util.Map;
+
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.Valid;
+
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.security.web.context.SecurityContextRepository;
+import org.springframework.security.web.csrf.CsrfToken;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-import java.util.Map;
+import com.backend.acervo.RequisicaoLogin;
+import com.backend.acervo.Usuario;
+import com.backend.acervo.dto.RequisicaoAlterarSenha;
+import com.backend.acervo.dto.RedefinirSenhaRequest;
+import com.backend.acervo.dto.SolicitarRecuperacaoRequest;
+import com.backend.acervo.repository.UsuarioRepository;
+import com.backend.acervo.service.AutenticacaoService;
 
-@CrossOrigin(origins = "http://localhost:4200", allowCredentials = "true")
 @RestController
 @RequestMapping("/api/autenticacao")
 public class ControladorAutenticacao {
 
-    private final AuthenticationManager gerenciadorAutenticacao;
+    private final AuthenticationManager authenticationManager;
+    private final SecurityContextRepository securityContextRepository;
     private final AutenticacaoService autenticacaoService;
     private final UsuarioRepository usuarioRepository;
 
     public ControladorAutenticacao(
-            AuthenticationManager gerenciadorAutenticacao,
-            PasswordEncoder codificadorSenha,
-            AutenticacaoService autenticacaoService,
-            UsuarioRepository usuarioRepository) {
-        this.gerenciadorAutenticacao = gerenciadorAutenticacao;
-        this.autenticacaoService = autenticacaoService;
-        this.usuarioRepository = usuarioRepository;
+            AuthenticationManager authenticationManager, SecurityContextRepository securityContextRepository,
+            AutenticacaoService autenticacaoService, UsuarioRepository usuarioRepository) {
+        this.authenticationManager = authenticationManager; this.securityContextRepository = securityContextRepository;
+        this.autenticacaoService = autenticacaoService; this.usuarioRepository = usuarioRepository;
+    }
+
+    @GetMapping("/csrf")
+    public CsrfToken csrf(CsrfToken token) {
+        return token;
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody RequisicaoLogin requisicao) {
-        System.out.println("Dados recebidos - Email: '" + requisicao.email() + "', Senha: '" + requisicao.senha() + "'");
-    
-    try {
-                
-        Authentication autenticacao = gerenciadorAutenticacao.authenticate(
-            new UsernamePasswordAuthenticationToken(requisicao.email(), requisicao.senha())
-        );
-        
-        System.out.println("Autenticação bem-sucedida!");
-        SecurityContextHolder.getContext().setAuthentication(autenticacao);
-        
-    
-        Usuario usuario = usuarioRepository.findByEmail(requisicao.email())
-                .orElseThrow(() -> new UsernameNotFoundException("Usuário não encontrado após autenticação"));
-        
-        
-        System.out.println("Usuário autenticado: " + usuario.getEmail());
-        System.out.println("Papel: " + usuario.getPerfil());
-        System.out.println("Nome: " + usuario.getNome());
-        System.out.println("Primeiro login: " + usuario.isPrimeiroLogin());
-        
-        if (usuario.isPrimeiroLogin()) {
+    public ResponseEntity<?> login(
+            @Valid @RequestBody RequisicaoLogin requisicao,
+            HttpServletRequest request,
+            HttpServletResponse response) {
+        try {
+            Authentication autenticacao = authenticationManager.authenticate(
+                    UsernamePasswordAuthenticationToken.unauthenticated(
+                            requisicao.email().trim().toLowerCase(),
+                            requisicao.senha()
+                    )
+            );
+
+            SecurityContext contexto = SecurityContextHolder.createEmptyContext();
+            contexto.setAuthentication(autenticacao);
+            SecurityContextHolder.setContext(contexto);
+            securityContextRepository.saveContext(contexto, request, response);
+
+            autenticacaoService.registrarLoginComSucesso(autenticacao.getName());
+            Usuario usuario = usuarioRepository.findByEmail(autenticacao.getName())
+                    .orElseThrow(() -> new IllegalStateException("Usuário autenticado não encontrado"));
+
             return ResponseEntity.ok(Map.of(
-                "primeiroLogin", true,
-                "mensagem", "Você deve alterar sua senha no primeiro acesso",
-                "email", usuario.getEmail(),
-                "nome", usuario.getNome(),
-                "papel", usuario.getPerfil().name()
+                    "mensagem", "Login realizado com sucesso",
+                    "usuario", Map.of(
+                    "id", usuario.getId(),
+                    "nome", usuario.getNome(),
+                    "email", usuario.getEmail(),
+                    "perfil", usuario.getPerfil().name(),
+                    "primeiroLogin", usuario.isPrimeiroLogin())
             ));
+        } catch (AuthenticationException exception) {
+            autenticacaoService.registrarFalhaDeLogin(requisicao.email());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("erro", "Credenciais inválidas ou conta indisponível"));
         }
-        
-        return ResponseEntity.ok(Map.of(
-            "mensagem", "Login realizado com sucesso",
-            "papel", usuario.getPerfil().name(),
-            "nome", usuario.getNome(),
-            "email", usuario.getEmail(),
-            "primeiroLogin", false
-        ));
-        
-    } catch (AuthenticationException e) {
-        System.out.println("ERRO DE AUTENTICAÇÃO: " + e.getClass().getSimpleName());
-        System.out.println("Mensagem: " + e.getMessage());
-        e.printStackTrace();
-        return ResponseEntity.status(401).body(Map.of("erro", "Credenciais inválidas"));
     }
-}
 
     @PostMapping("/alterar-senha")
-    public ResponseEntity<?> alterarSenha(@RequestBody RequisicaoAlterarSenha requisicao) {
+    public ResponseEntity<?> alterarSenha(
+            @Valid @RequestBody RequisicaoAlterarSenha requisicao,
+            Authentication autenticacao) {
         try {
-            return ResponseEntity.ok(autenticacaoService.alterarSenha(
-                requisicao.email(),
-                requisicao.senhaAtual(),
-                requisicao.novaSenha()
-            ));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of(
-                "erro", e.getMessage()
-            ));
+            autenticacaoService.alterarSenha(
+                    autenticacao.getName(),
+                    requisicao.senhaAtual(),
+                    requisicao.novaSenha()
+            );
+            return ResponseEntity.ok(Map.of("mensagem", "Senha alterada com sucesso"));
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            return ResponseEntity.badRequest().body(Map.of("erro", exception.getMessage()));
         }
     }
 
     @PostMapping("/solicitar-recuperacao")
-    public ResponseEntity<?> solicitarRecuperacaoSenha(@RequestBody SolicitarRecuperacaoRequest request) {
-        try {
-            autenticacaoService.solicitarRecuperacaoSenha(request.email());
-            return ResponseEntity.ok().build();
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of(
-                "erro", e.getMessage()
-            ));
-        }
+    public ResponseEntity<?> solicitarRecuperacaoSenha(
+            @Valid @RequestBody SolicitarRecuperacaoRequest request) {
+        autenticacaoService.solicitarRecuperacaoSenha(request.email());
+        return ResponseEntity.ok(Map.of(
+                "mensagem", "Se o e-mail estiver cadastrado, você receberá as instruções de recuperação."
+        ));
     }
 
     @PostMapping("/redefinir-senha")
-    public ResponseEntity<?> redefinirSenha(@RequestBody RedefinirSenhaRequest request) {
+    public ResponseEntity<?> redefinirSenha(
+            @Valid @RequestBody RedefinirSenhaRequest request) {
         try {
-            autenticacaoService.redefinirSenha(
-                request.token(), 
-                request.novaSenha()
-            );
-            return ResponseEntity.ok(Map.of(
-                "mensagem", "Senha redefinida com sucesso"
-            ));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of(
-                "erro", e.getMessage()
-            ));
+            autenticacaoService.redefinirSenha(request.token(), request.novaSenha());
+            return ResponseEntity.ok(Map.of("mensagem", "Senha redefinida com sucesso"));
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("erro", "Não foi possível redefinir a senha"));
         }
     }
 }

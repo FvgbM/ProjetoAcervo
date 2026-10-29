@@ -1,149 +1,200 @@
 package com.backend.acervo.service;
 
-import com.backend.acervo.exceptions.*;
-import com.backend.acervo.Usuario;
-import com.backend.acervo.repository.UsuarioRepository;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
+import java.time.LocalDateTime;
+import java.util.Base64;
+import java.util.HexFormat;
+import java.util.Locale;
+
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
-import java.util.UUID;
+import com.backend.acervo.TokenRecuperacaoSenha;
+import com.backend.acervo.Usuario;
+import com.backend.acervo.repository.TokenRecuperacaoSenhaRepository;
+import com.backend.acervo.repository.UsuarioRepository;
 
 @Service
 public class AutenticacaoService {
 
-    private static final Logger logger = LoggerFactory.getLogger(AutenticacaoService.class);
-    
+    private static final int MAXIMO_TENTATIVAS = 3;
+    private static final int MINUTOS_BLOQUEIO = 15;
+    private static final int HORAS_EXPIRACAO_TOKEN = 2;
+    private static final SecureRandom RANDOM = new SecureRandom();
+
     private final UsuarioRepository usuarioRepository;
+    private final TokenRecuperacaoSenhaRepository tokenRepository;
     private final PasswordEncoder codificadorSenha;
     private final EmailService emailService;
+    private final String frontendBaseUrl;
 
     public AutenticacaoService(
             UsuarioRepository usuarioRepository,
+            TokenRecuperacaoSenhaRepository tokenRepository,
             PasswordEncoder codificadorSenha,
-            EmailService emailService) {
+            EmailService emailService,
+            @Value("${app.frontend.base-url}") String frontendBaseUrl) {
         this.usuarioRepository = usuarioRepository;
+        this.tokenRepository = tokenRepository;
         this.codificadorSenha = codificadorSenha;
         this.emailService = emailService;
-        criarUsuarioAdmin();
+        this.frontendBaseUrl = frontendBaseUrl.replaceAll("/+$", "");
     }
-    
-    private void criarUsuarioAdmin() {
-        if (usuarioRepository.findByEmail("admin@fatec.sp.gov.br").isEmpty()) {
-            Usuario admin = new Usuario();
-            admin.setEmail("admin@fatec.sp.gov.br");
-            admin.setSenha(codificadorSenha.encode("@Admin123"));
-            admin.setNome("Administrador");
-            admin.setRg("ADMIN.RG.SP");
-            admin.setPerfil(Usuario.Perfil.COLABORADOR);
-            admin.setPrimeiroLogin(true);
-            usuarioRepository.save(admin);
-        }
-    }
-
-    @Transactional(readOnly = true)
-    public Usuario autenticar(String email, String senha) {
-        logger.info("Tentativa de autenticação para o email: {}", email);
-        
-        Usuario usuario = usuarioRepository.findByEmail(email)
-            .orElseThrow(() -> {
-                logger.warn("Usuário não encontrado com email: {}", email);
-                return new UsuarioNaoEncontradoException("Usuário não encontrado");
-            });
-        
-        if (!usuario.isAtivo()) {
-            logger.warn("Tentativa de login para usuário inativo: {}", email);
-            throw new UsuarioInativoException("Conta desativada");
-        }
-        
-        if (!codificadorSenha.matches(senha, usuario.getSenha())) {
-            logger.warn("Senha incorreta para o usuário: {}", email);
-            throw new SenhaIncorretaException("Senha incorreta");
-        }
-        
-        logger.info("Autenticação bem-sucedida para: {}", email);
-        return usuario;
-    }
-
-    
 
     @Transactional
-    public String alterarSenha(String email, String senhaAtual, String novaSenha) {
-        logger.info("Solicitação de alteração de senha para: {}", email);
-        
-        Usuario usuario = usuarioRepository.findByEmail(email)
-            .orElseThrow(() -> new UsuarioNaoEncontradoException("Usuário não encontrado"));
-        
-        if (!codificadorSenha.matches(senhaAtual, usuario.getSenha())) {
-            throw new SenhaIncorretaException("Senha atual incorreta");
+    public void registrarLoginComSucesso(String email) {
+        Usuario usuario = buscarUsuario(email);
+        usuario.setTentativasFalhas(0);
+        usuario.setBloqueadoAte(null);
+        usuarioRepository.save(usuario);
+    }
+
+    @Transactional
+    public void registrarFalhaDeLogin(String email) {
+        String emailNormalizado = normalizarEmail(email);
+        usuarioRepository.findByEmail(emailNormalizado).ifPresent(usuario -> {
+            if (!usuario.isAtivo()
+                    || usuario.getStatusUsuario() != Usuario.StatusUsuario.ATIVO) {
+                return;
+            }
+
+            int tentativas = usuario.getTentativasFalhas() + 1;
+            usuario.setTentativasFalhas(tentativas);
+
+            if (tentativas >= MAXIMO_TENTATIVAS) {
+                usuario.setTentativasFalhas(0);
+                usuario.setBloqueadoAte(LocalDateTime.now().plusMinutes(MINUTOS_BLOQUEIO));
+            }
+
+            usuarioRepository.save(usuario);
+        });
+    }
+
+    @Transactional
+    public void alterarSenha(String emailAutenticado, String senhaAtual, String novaSenha) {
+        Usuario usuario = buscarUsuario(emailAutenticado);
+
+        if (!usuario.isAtivo() || usuario.getStatusUsuario() != Usuario.StatusUsuario.ATIVO) {
+            throw new IllegalStateException("Conta indisponível");
         }
-        
+        if (!codificadorSenha.matches(senhaAtual, usuario.getSenha())) {
+            throw new IllegalArgumentException("Senha atual inválida");
+        }
+
         validarSenha(novaSenha);
-        
+        if (codificadorSenha.matches(novaSenha, usuario.getSenha())) {
+            throw new IllegalArgumentException("A nova senha deve ser diferente da senha atual");
+        }
+
         usuario.setSenha(codificadorSenha.encode(novaSenha));
         usuario.setPrimeiroLogin(false);
+        usuario.setTentativasFalhas(0);
+        usuario.setBloqueadoAte(null);
         usuarioRepository.save(usuario);
-        
-        logger.info("Senha alterada com sucesso para: {}", email);
-        return "Senha alterada com sucesso";
+
+        tokenRepository.invalidarTokensAtivosDoUsuario(usuario.getId(), LocalDateTime.now());
     }
 
     @Transactional
     public void solicitarRecuperacaoSenha(String email) {
-        logger.info("Solicitação de recuperação de senha para: {}", email);
+        String emailNormalizado = normalizarEmail(email);
+        Usuario usuario = usuarioRepository.findByEmail(emailNormalizado).orElse(null);
 
-        Usuario usuario = usuarioRepository.findByEmail(email)
-            .orElseThrow(() -> new UsuarioNaoEncontradoException("Usuário não encontrado"));
-
-        if (!usuario.isAtivo()) {
-            throw new UsuarioInativoException("Conta desativada");
+        // Não revelar se uma conta existe, está inativa ou foi bloqueada.
+        if (usuario == null
+                || !usuario.isAtivo()
+                || usuario.getStatusUsuario() != Usuario.StatusUsuario.ATIVO) {
+            return;
         }
-        
-        String token = UUID.randomUUID().toString();
-        usuario.setTokenRecuperacao(token);
-        usuario.setDataExpiracaoToken(LocalDateTime.now().plusHours(2));
-        usuarioRepository.save(usuario);
-        
-        String linkRecuperacao = "http://localhost:4200/recuperar-senha?token=" + token;
-        emailService.enviarEmailRecuperacao(email, linkRecuperacao);
-        
-        logger.info("Email de recuperação enviado para: {}", email);
+
+        LocalDateTime agora = LocalDateTime.now();
+        tokenRepository.invalidarTokensAtivosDoUsuario(usuario.getId(), agora);
+
+        String tokenPuro = gerarTokenSeguro();
+        TokenRecuperacaoSenha token = new TokenRecuperacaoSenha();
+        token.setUsuario(usuario);
+        token.setTokenHash(calcularHash(tokenPuro));
+        token.setCriadoEm(agora);
+        token.setExpiraEm(agora.plusHours(HORAS_EXPIRACAO_TOKEN));
+        tokenRepository.save(token);
+
+        String link = frontendBaseUrl + "/recuperar-senha?token=" + tokenPuro;
+        emailService.enviarEmailRecuperacao(usuario.getEmail(), link);
     }
 
     @Transactional
-    public void redefinirSenha(String token, String novaSenha) {
-        logger.info("Tentativa de redefinição de senha com token: {}", token);
+    public void redefinirSenha(String tokenPuro, String novaSenha) {
+        String tokenHash = calcularHash(tokenPuro);
+        TokenRecuperacaoSenha token = tokenRepository
+                .findFirstByTokenHashAndUsadoEmIsNull(tokenHash)
+                .orElseThrow(() -> new IllegalArgumentException("Token inválido ou expirado"));
 
-        Usuario usuario = usuarioRepository.findByTokenRecuperacao(token)
-            .orElseThrow(() -> new TokenInvalidoException("Token inválido ou expirado"));
-
-        if (usuario.getDataExpiracaoToken().isBefore(LocalDateTime.now())) {
-            throw new TokenExpiradoException("Token expirado");
+        LocalDateTime agora = LocalDateTime.now();
+        if (!token.getExpiraEm().isAfter(agora)) {
+            token.setUsadoEm(agora);
+            tokenRepository.save(token);
+            throw new IllegalArgumentException("Token inválido ou expirado");
         }
-        
+
+        Usuario usuario = token.getUsuario();
+        if (!usuario.isAtivo() || usuario.getStatusUsuario() != Usuario.StatusUsuario.ATIVO) {
+            throw new IllegalStateException("Conta indisponível");
+        }
+
         validarSenha(novaSenha);
-        
+        if (codificadorSenha.matches(novaSenha, usuario.getSenha())) {
+            throw new IllegalArgumentException("A nova senha deve ser diferente da senha atual");
+        }
+
         usuario.setSenha(codificadorSenha.encode(novaSenha));
-        usuario.setTokenRecuperacao(null);
-        usuario.setDataExpiracaoToken(null);
+        usuario.setPrimeiroLogin(false);
+        usuario.setTentativasFalhas(0);
+        usuario.setBloqueadoAte(null);
         usuarioRepository.save(usuario);
-        
-        logger.info("Senha redefinida com sucesso para o usuário: {}", usuario.getEmail());
+
+        tokenRepository.invalidarTokensAtivosDoUsuario(usuario.getId(), agora);
+    }
+
+    private Usuario buscarUsuario(String email) {
+        return usuarioRepository.findByEmail(normalizarEmail(email))
+                .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado"));
+    }
+
+    private String normalizarEmail(String email) {
+        if (email == null || email.isBlank()) {
+            throw new IllegalArgumentException("E-mail obrigatório");
+        }
+        return email.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private String gerarTokenSeguro() {
+        byte[] bytes = new byte[32];
+        RANDOM.nextBytes(bytes);
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+    }
+
+    private String calcularHash(String valor) {
+        try {
+            byte[] hash = MessageDigest.getInstance("SHA-256")
+                    .digest(valor.getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(hash);
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256 indisponível", exception);
+        }
     }
 
     private void validarSenha(String senha) {
-        if (!senhaValida(senha)) {
-            throw new SenhaInvalidaException(
-                "A senha deve conter pelo menos: " +
-                "1 letra maiúscula, 1 minúscula, 1 número e 1 caractere especial (@#$%^&+=)");
+        if (senha == null || !senha.matches(
+                "^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[@#$%^&+=])(?=\\S+$).{12,}$")) {
+            throw new IllegalArgumentException(
+                    "A senha deve ter no mínimo 12 caracteres, uma letra maiúscula, "
+                            + "uma minúscula, um número e um caractere especial"
+            );
         }
-    }
-
-    private boolean senhaValida(String senha) {
-        String padrao = "^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[@#$%^&+=])(?=\\S+$).{8,}$";
-        return senha.matches(padrao);
     }
 }

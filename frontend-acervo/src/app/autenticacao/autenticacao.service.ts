@@ -1,9 +1,10 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable, BehaviorSubject, throwError } from 'rxjs';
-import { catchError, tap } from 'rxjs/operators';
+import { catchError, switchMap, tap } from 'rxjs/operators';
 import { environment } from '../environment';
 import { Usuario } from '../models/usuario.model';
+
 
 @Injectable({
   providedIn: 'root'
@@ -29,24 +30,22 @@ export class AutenticacaoService {
     }
   }
 
+  private obterCsrf(): Observable<unknown> {
+    return this.http.get('${this.apiUrl}/csrf', { withCredentials: true});
+  }
+
   login(email: string, senha: string): Observable<any> {
-    return this.http.post(`${this.apiUrl}/login`, 
-      { email, senha }, {
-        withCredentials: true,
-        headers: new HttpHeaders({
-          'Content-Type': 'application/json'
-        })
-      }).pipe(
-        tap((response: any) => {
-          if (response && response.usuario) {
-            this.armazenarUsuario(response.usuario);
-          }
-        }),
-        catchError(error => {
-          console.error('Erro no login:', error);
-          return throwError(() => error);
-        })
-      );
+    return this.obterCsrf().pipe(
+      switchMap(() => this.http.post('${this.apiUrl}/login', { email, senha },
+        {
+          withCredentials: true, headers: new HttpHeaders({ 'Content-Type': 'application/jason' })
+        }
+      )),
+      tap((response: any) => {
+        if (response?.usuario) this.armazenarUsuario(response.usuario);
+      }),
+      catchError(error => throwError(() => error))
+    );
   }
 
   private armazenarUsuario(usuario: Usuario): void {
@@ -114,27 +113,45 @@ export class AutenticacaoService {
   }
 
   redefinirSenha(token: string, novaSenha: string): Observable<any> {
-    return this.http.post(`${this.apiUrl}/redefinir-senha`, 
-      { token, novaSenha },
-      {
-        headers: new HttpHeaders({ 'Content-Type': 'application/json' })
-      }
-    ).pipe(
-      catchError(error => {
-        console.error('Erro ao redefinir senha', error);
-        throw error;
-      })
-    );
+    return this.obterCsrf().pipe(
+      switchMap(() =>
+        this.http.post(
+          '${this.apiUrl}/redefinir-senha',
+          { token, novaSenha },
+          {
+            withCredentials: true,
+            headers: new HttpHeaders({
+              'Content-Type': 'application/json'
+            })
+          }
+        )
+    ),
+    catchError(error => {
+      console.error('Erro ao redefinir a senha', error);
+      return throwError(() => error);
+    })
+  );
   }
 
   solicitarRecuperacaoSenha(email: string): Observable<any> {
-    const url = `${this.apiUrl}/solicitar-recuperacao`;
-    return this.http.post(url, { email }).pipe(
-      catchError(error => {
-        console.error('Erro ao solicitar recuperação de senha', error);
-        throw error;
-      })
-    );
+    return this.obterCsrf().pipe(
+      switchMap(() =>
+        this.http.post(
+          '${this.apiUrl}/solicitar-recuperacao',
+              { email },
+        {
+          withCredentials: true,
+          headers: new HttpHeaders({
+            'Content-Type': 'application/json',
+          })
+        }
+      )
+    ),
+    catchError(error => {
+      console.error('Erro ao solicitar a recuperacao de senha:', error);
+      return throwError(() => error);
+    })
+  );
   }
 
   atualizarPerfilUsuario(usuarioAtualizado: Usuario): void {

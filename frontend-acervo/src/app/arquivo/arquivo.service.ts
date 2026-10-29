@@ -1,36 +1,58 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+
 import { environment } from '../environment';
 
-@Injectable({
-  providedIn: 'root'
-})
+export interface ArquivoInfo {
+  id: number;
+  nomeOriginal: string;
+  tipoConteudo: string;
+  tamanho: number;
+  criptografado: boolean;
+  dataEnvio: string;
+  ataIdLong: number;
+}
+
+export interface ValidacaoArquivo {
+  valido: boolean;
+  tamanho: number;
+  tipo: string;
+  mensagem?: string;
+}
+
+@Injectable({ providedIn: 'root' })
 export class ArquivoService {
-  private apiUrl = `${environment.apiUrl}/api/arquivos`;
+  private readonly apiUrl = `${environment.apiUrl}/api/arquivos`;
 
-  constructor(private http: HttpClient) { }
+  constructor(private readonly http: HttpClient) {}
 
-  uploadArquivo(arquivo: File, usuarioId: number): Observable<any> {
+  validar(file: File): Observable<ValidacaoArquivo> {
     const formData = new FormData();
-    formData.append('arquivo', arquivo);
-    formData.append('usuarioId', usuarioId.toString());
+    formData.append('file', file, file.name);
 
-    return this.http.post(this.apiUrl, formData);
+    return this.http.post<ValidacaoArquivo>(
+      `${this.apiUrl}/validar`,
+      formData,
+      { withCredentials: true }
+    );
   }
 
-  downloadArquivo(id: number): Observable<any> {
-    return this.http.get(`${this.apiUrl}/${id}`, {
-      responseType: 'blob',
-      observe: 'response'
+  uploadParaAta(ataId: number, file: File): Observable<ArquivoInfo> {
+    const formData = new FormData();
+    formData.append('file', file, file.name);
+
+    return this.http.post<ArquivoInfo>(
+      `${this.apiUrl}/upload/${ataId}`,
+      formData,
+      { withCredentials: true }
+    );
+  }
+
+  download(ataId: number): Observable<Blob> {
+    return this.http.get(`${this.apiUrl}/download/${ataId}`, {
+      withCredentials: true,
+      responseType: 'blob'
     });
-  }
-
-  listarArquivos(): Observable<any> {
-    return this.http.get(this.apiUrl);
-  }
-
-  excluirArquivo(id: number): Observable<any> {
-    return this.http.delete(`${this.apiUrl}/${id}`);
   }
 }

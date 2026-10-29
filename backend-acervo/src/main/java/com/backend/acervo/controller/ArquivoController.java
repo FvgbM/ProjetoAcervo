@@ -1,64 +1,43 @@
 package com.backend.acervo.controller;
 
-import com.backend.acervo.Arquivo;
-import com.backend.acervo.Usuario;
-import com.backend.acervo.service.ArquivoService;
-import com.backend.acervo.exceptions.ArquivoNaoEncontradoException;
-import com.backend.acervo.exceptions.UsuarioNaoEncontradoException;
-import com.backend.acervo.repository.UsuarioRepository;
+import java.util.Map;
+import java.util.Objects;
 
-import org.springframework.core.io.Resource;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.ResponseEntity;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.http.*;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import com.backend.acervo.Usuario;
+import com.backend.acervo.dto.ArquivoRespostaDTO;
+import com.backend.acervo.repository.UsuarioRepository;
+import com.backend.acervo.service.ArquivoService;
 
-@CrossOrigin(origins = "http://localhost:4200", allowCredentials = "true")
 @RestController
 @RequestMapping("/api/arquivos")
 public class ArquivoController {
+    private final ArquivoService service; private final UsuarioRepository usuarios;
+    public ArquivoController(ArquivoService service, UsuarioRepository usuarios) { this.service = service; this.usuarios = usuarios; }
+    private Usuario usuario(Authentication auth) { return usuarios.findByEmail(auth.getName()).orElseThrow(() -> new IllegalStateException("Usuário autenticado não encontrado")); }
 
-    private final ArquivoService arquivoService;
-    private final UsuarioRepository usuarioRepository;
-
-    public ArquivoController(ArquivoService arquivoService, UsuarioRepository usuarioRepository) {
-        this.arquivoService = arquivoService;
-        this.usuarioRepository = usuarioRepository;
+    @PostMapping("/validar") @PreAuthorize("hasAnyRole('COLABORADOR','ADMIN')")
+    public Map<String, Object> validar(@RequestParam("file") MultipartFile file) {
+        service.validar(file); return Map.of("valido", true, "tamanho", file.getSize(), "tipo", "application/pdf");
     }
 
-    @PostMapping("/upload")
-public ResponseEntity<?> uploadArquivo(@RequestParam MultipartFile file) {
-    try {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String username = authentication.getName();
-        Usuario usuario = usuarioRepository.findByEmail(username)
-            .orElseThrow(() -> new UsuarioNaoEncontradoException("Usuário não encontrado"));
-        
-        Arquivo arquivoSalvo = arquivoService.salvarArquivo(file, usuario);
-        return ResponseEntity.ok(arquivoSalvo);
-    } catch (IllegalArgumentException e) {
-        return ResponseEntity.badRequest().body(e.getMessage());
-    } catch (Exception e) {
-        return ResponseEntity.internalServerError().body("Erro ao processar arquivo");
+    @PostMapping(value="/upload/{ataId}", consumes=MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAnyRole('COLABORADOR','ADMIN')")
+    public ResponseEntity<ArquivoRespostaDTO> upload(@PathVariable Long ataId, @RequestParam("file") MultipartFile file, Authentication auth) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(ArquivoRespostaDTO.de(service.salvarParaAta(ataId, file, usuario(auth))));
     }
-}
 
-    @GetMapping("/{id}")
-    public ResponseEntity<Resource> downloadArquivo(@PathVariable Long id) {
-        try {
-            Resource resource = arquivoService.carregarArquivo(id);
-            return ResponseEntity.ok()
-                    .header(HttpHeaders.CONTENT_DISPOSITION, 
-                            "attachment; filename=\"" + resource.getFilename() + "\"")
-                    .body(resource);
-        } catch (ArquivoNaoEncontradoException e) {
-            return ResponseEntity.notFound().build();
-        } catch (Exception e) {
-            return ResponseEntity.internalServerError().build();
-        }
+    @GetMapping("/download/{ataId}")
+    public ResponseEntity<ByteArrayResource> download(@PathVariable Long ataId, Authentication auth) {
+        ByteArrayResource recurso = service.baixar(ataId, usuario(auth));
+        return ResponseEntity.ok().contentType(Objects.requireNonNull(MediaType.APPLICATION_PDF,
+        "Tipo de conteúdo PDF indisponível"))
+          .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=ata-" + ataId + ".pdf")
+          .header("X-Content-Type-Options", "nosniff").body(recurso);
     }
 }
-
-

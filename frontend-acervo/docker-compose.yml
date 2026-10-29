@@ -1,46 +1,53 @@
 services:
-  db-acervo:
-    image: fabio2001/mysql-acervo
-    container_name: db-acervo
+  backend:
+    build:
+      context: ../backend-acervo
     environment:
-      MYSQL_ROOT_PASSWORD: "#Trabuco01"
-      MYSQL_DATABASE: acervo_db
-    ports:
-      - "3306:3306"
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/acervo?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=America/Sao_Paulo
+      SPRING_DATASOURCE_USERNAME: acervo_app
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_APP_PASSWORD:?Defina MYSQL_APP_PASSWORD no arquivo .env}
+      APP_FILE_UPLOAD_DIR: /app/uploads
+      APP_FILE_ENCRYPTION_KEY_BASE64: ${FILE_ENCRYPTION_KEY_BASE64:?Defina FILE_ENCRYPTION_KEY_BASE64 no arquivo .env}
+    volumes:
+      - arquivos_acervo:/app/uploads
+    depends_on:
+      mysql:
+        condition: service_healthy
+    expose:
+      - "8080"
     networks:
       - acervo-network
+
+  frontend:
+    build:
+      context: .
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - acervo-network
+
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: acervo
+      MYSQL_USER: acervo_app
+      MYSQL_PASSWORD: ${MYSQL_APP_PASSWORD:?Defina MYSQL_APP_PASSWORD no arquivo .env}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Defina MYSQL_ROOT_PASSWORD no arquivo .env}
+    volumes:
+      - mysql_acervo:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p#Trabuco01"]
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -p$$MYSQL_ROOT_PASSWORD"]
       interval: 10s
       timeout: 5s
-      retries: 5
-      start_period: 30s
-
-  backend-acervo:
-    image: fabio2001/backend-acervo
-    container_name: backend-acervo
-    depends_on:
-      db-acervo:
-        condition: service_healthy
-    ports:
-      - "3000:3000"
+      retries: 10
     networks:
       - acervo-network
-    environment:
-      DB_HOST: db-acervo
-      DB_USER: root
-      DB_PASSWORD: "#Trabuco01"
-      DB_NAME: acervo_db
 
-  frontend-acervo:
-    image: fabio2001/frontend-acervo
-    container_name: frontend-acervo
-    ports:
-      - "8080:80"
-    networks:
-      - acervo-network
-    depends_on:
-      - backend-acervo
+volumes:
+  mysql_acervo:
+  arquivos_acervo:
 
 networks:
   acervo-network:

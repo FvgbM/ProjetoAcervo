@@ -1,7 +1,8 @@
 package com.backend.acervo.dto;
 
+import jakarta.validation.constraints.NotBlank;
+
 public record RequisicaoAlterarSenha(
-    String email,
-    String senhaAtual,
-    String novaSenha
-) {}
+        @NotBlank String senhaAtual,
+        @NotBlank String novaSenha
+) { }

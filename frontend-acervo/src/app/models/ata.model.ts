@@ -1,17 +1,14 @@
-
 export interface Ata {
   id?: number;
-  numeroAta: number;
+  numeroAta?: number;
   dataReuniao: string;
   pauta: string;
   participantes: string;
-  criadoPor?: {
-    id: number;
-    nome: string;
-    email: string;
-  };
+  status?: 'ATIVA' | 'EXCLUIDA' | 'RASCUNHO';
+  liberadaParaAlunos?: boolean;
   criadoEm?: string;
-  status: 'ATIVA' | 'EXCLUIDA' | 'RASCUNHO';
+  criadoPorNome?: string;
+  possuiArquivo: boolean;
 }
 
 export interface AtaDTO {

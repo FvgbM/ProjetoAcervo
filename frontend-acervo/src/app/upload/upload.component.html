@@ -1,21 +1,118 @@
-<div class="upload-container">
-  <h2>Enviar Arquivo PDF</h2>
-  
-  <div class="alert alert-success" *ngIf="mensagem">
-    {{ mensagem }}
-  </div>
-  
-  <div class="alert alert-danger" *ngIf="erro">
-    {{ erro }}
+<div class="container">
+  <div class="header">
+    <h1>Upload de PDF para Ata</h1>
+    <button type="button" (click)="cancelar()" class="btn btn-outline">
+      Voltar para Atas
+    </button>
   </div>
 
-  <div class="file-upload">
-    <input type="file" id="fileInput" (change)="onFileSelected($event)" accept=".pdf">
-    <label for="fileInput">Escolher Arquivo</label>
-    <span *ngIf="arquivoSelecionado">{{ arquivoSelecionado.name }}</span>
-  </div>
+  <form [formGroup]="uploadForm" (ngSubmit)="onSubmit()" class="upload-form" *ngIf="!processando">
+    <div class="form-section">
+      <h3>Selecionar Ata</h3>
 
-  <button class="btn btn-primary" (click)="uploadArquivo()" [disabled]="!arquivoSelecionado">
-    Enviar Arquivo
-  </button>
+      <div class="form-group">
+        <label for="ataId">Ata *</label>
+
+        <select
+          id="ataId"
+          formControlName="ataId"
+          class="form-control"
+          [class.is-invalid]="submetido && uploadForm.controls.ataId.errors">
+          <option value="">Selecione uma ata...</option>
+
+          <option *ngFor="let ata of atasSemArquivo" [value]="ata.id">
+            Ata #{{ ata.numeroAta }} — {{ ata.dataReuniao | date:'dd/MM/yyyy' }} — {{ ata.pauta | slice:0:50 }}
+          </option>
+        </select>
+
+        <div *ngIf="submetido && uploadForm.controls.ataId.errors" class="invalid-feedback">
+          Selecione uma ata.
+        </div>
+
+        <small class="form-text">
+          Apenas atas sem PDF vinculado são exibidas.
+        </small>
+      </div>
+    </div>
+
+    <div class="form-section">
+      <h3>Arquivo PDF</h3>
+
+      <div
+        class="drop-zone"
+        [class.dragover]="isDragover"
+        [class.has-file]="arquivoSelecionado"
+        (dragover)="onDragOver($event)"
+        (dragleave)="onDragLeave($event)"
+        (drop)="onDrop($event)"
+        (click)="fileInput.click()">
+
+        <div class="drop-content" *ngIf="!arquivoSelecionado">
+          <h4>Arraste um arquivo PDF aqui</h4>
+          <p>ou clique para selecionar</p>
+          <small>Arquivos PDF de até 10 MB</small>
+        </div>
+
+        <div class="file-selected" *ngIf="arquivoSelecionado">
+          <div class="file-info">
+            <h4>{{ arquivoSelecionado.name }}</h4>
+            <p>{{ (arquivoSelecionado.size / 1024 / 1024).toFixed(2) }} MB</p>
+          </div>
+
+          <button
+            type="button"
+            (click)="removerArquivo($event)"
+            class="btn-remove"
+            aria-label="Remover arquivo">
+            Remover
+          </button>
+        </div>
+
+        <input
+          #fileInput
+          type="file"
+          (change)="onFileSelected($event)"
+          accept="application/pdf,.pdf"
+          hidden>
+      </div>
+
+      <div *ngIf="erroArquivo" class="alert alert-danger">
+        {{ erroArquivo }}
+      </div>
+
+      <div *ngIf="arquivoValidado" class="validation-info">
+        <div class="validation-item valid">
+          PDF validado pelo servidor.
+        </div>
+      </div>
+    </div>
+
+    <div *ngIf="mensagemErro" class="alert alert-danger">
+      {{ mensagemErro }}
+    </div>
+
+    <div *ngIf="mensagemSucesso" class="alert alert-success">
+      {{ mensagemSucesso }}
+    </div>
+
+    <div class="form-actions">
+      <button type="button" (click)="cancelar()" class="btn btn-outline">
+        Cancelar
+      </button>
+
+      <button
+        type="submit"
+        [disabled]="processando || !arquivoSelecionado || !arquivoValidado"
+        class="btn btn-primary">
+        Vincular PDF
+      </button>
+    </div>
+  </form>
+
+  <div *ngIf="processando" class="loading-overlay">
+    <div class="loading-content">
+      <div class="spinner-large"></div>
+      <p>Enviando e validando o PDF...</p>
+    </div>
+  </div>
 </div>
