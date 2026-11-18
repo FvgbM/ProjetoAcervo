@@ -146,6 +146,22 @@
       background: #b71c1c;
     }
 
+    .pdf-viewer {
+      width: 100%;
+      min-height: 620px;
+      border: 1px solid #d9dfe5;
+      border-radius: 4px;
+    }
+
+    .pdf-status {
+      margin: 0;
+      color: #666;
+    }
+
+    .pdf-status.error {
+      color: #b71c1c;
+    }
+
     .loading, .error-state {
       text-align: center;
       padding: 40px;

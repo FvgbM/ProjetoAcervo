@@ -24,7 +24,7 @@ public interface AtaRepository extends JpaRepository<Ata, Long> {
 
     @EntityGraph(attributePaths = "arquivo")
     List<Ata> findByPautaContainingIgnoreCaseAndStatus( String pauta, Ata.StatusAta status);
-    
+
     @Query("select max(a.numeroAta) from Ata a")
     Optional<Integer> findMaxNumeroAta();
 }

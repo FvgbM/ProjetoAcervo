@@ -26,7 +26,7 @@ public class UsuarioController {
             @PathVariable Long id,
             @RequestBody AprovarUsuarioRequest request,
             @AuthenticationPrincipal Usuario usuarioLogado) {
-        
+
         try {
             if (id.equals(usuarioLogado.getId())) {
                 return ResponseEntity.badRequest()
@@ -35,7 +35,7 @@ public class UsuarioController {
 
             Usuario usuarioAprovado = usuarioService.aprovarUsuario(id, request.getPerfil());
             return ResponseEntity.ok(usuarioAprovado);
-            
+
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception e) {
@@ -57,9 +57,9 @@ public class UsuarioController {
             @RequestParam(required = false) String status,
             @RequestParam(required = false) Usuario.Perfil perfil,
             @RequestParam(required = false) String nome) {
-        
+
         List<Usuario> usuarios;
-        
+
         if (status != null) {
             usuarios = usuarioService.listarPorStatus(status);
         } else if (perfil != null) {
@@ -69,7 +69,7 @@ public class UsuarioController {
         } else {
             usuarios = usuarioService.listarTodos();
         }
-        
+
         return ResponseEntity.ok(usuarios);
     }
 
@@ -78,7 +78,7 @@ public class UsuarioController {
             @PathVariable Long id,
             @AuthenticationPrincipal Usuario usuarioLogado) {
 
-        if (!usuarioLogado.getPerfil().equals(Usuario.Perfil.COLABORADOR) && 
+        if (!usuarioLogado.getPerfil().equals(Usuario.Perfil.COLABORADOR) &&
             !usuarioLogado.getId().equals(id)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body("Acesso negado.");
@@ -98,7 +98,7 @@ public class UsuarioController {
             @PathVariable Long id,
             @RequestBody AtualizarPerfilRequest request,
             @AuthenticationPrincipal Usuario usuarioLogado) {
-        
+
         try {
             if (id.equals(usuarioLogado.getId())) {
                 return ResponseEntity.badRequest()
@@ -107,7 +107,7 @@ public class UsuarioController {
 
             Usuario usuario = usuarioService.atualizarPerfil(id, request.getPerfil());
             return ResponseEntity.ok(usuario);
-            
+
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         } catch (RuntimeException e) {
@@ -121,7 +121,7 @@ public class UsuarioController {
             @PathVariable Long id,
             @RequestBody AtualizarStatusRequest request,
             @AuthenticationPrincipal Usuario usuarioLogado) {
-        
+
         try {
             if (id.equals(usuarioLogado.getId())) {
                 return ResponseEntity.badRequest()
@@ -130,7 +130,7 @@ public class UsuarioController {
 
             Usuario usuario = usuarioService.atualizarStatus(id, request.getStatus());
             return ResponseEntity.ok(usuario);
-            
+
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         } catch (RuntimeException e) {
@@ -144,7 +144,7 @@ public class UsuarioController {
             @PathVariable Long id,
             @RequestBody Usuario usuarioAtualizado,
             @AuthenticationPrincipal Usuario usuarioLogado) {
-        
+
         try {
             if (id.equals(usuarioLogado.getId())) {
                 return ResponseEntity.badRequest()
@@ -153,7 +153,7 @@ public class UsuarioController {
 
             Usuario usuario = usuarioService.atualizarUsuario(id, usuarioAtualizado);
             return ResponseEntity.ok(usuario);
-            
+
         } catch (RuntimeException e) {
             return ResponseEntity.notFound().build();
         }
@@ -164,7 +164,7 @@ public class UsuarioController {
     public ResponseEntity<?> deletarUsuario(
             @PathVariable Long id,
             @AuthenticationPrincipal Usuario usuarioLogado) {
-        
+
         try {
             if (id.equals(usuarioLogado.getId())) {
                 return ResponseEntity.badRequest()
@@ -173,7 +173,7 @@ public class UsuarioController {
 
             usuarioService.deletarUsuario(id);
             return ResponseEntity.ok().body("Usuário desativado com sucesso.");
-            
+
         } catch (RuntimeException e) {
             return ResponseEntity.notFound().build();
         }
@@ -196,11 +196,11 @@ public class UsuarioController {
     public static class AprovarUsuarioRequest {
         private Usuario.Perfil perfil;
 
-        public Usuario.Perfil getPerfil() { 
+        public Usuario.Perfil getPerfil() {
         return perfil;
         }
 
-        public void setPerfil(Usuario.Perfil perfil) { 
+        public void setPerfil(Usuario.Perfil perfil) {
             this.perfil = perfil;
         }
     }
@@ -209,9 +209,9 @@ public class UsuarioController {
         private Usuario.Perfil perfil;
 
         public Usuario.Perfil getPerfil() {
-            return perfil; 
+            return perfil;
     }
-        public void setPerfil(Usuario.Perfil perfil) { 
+        public void setPerfil(Usuario.Perfil perfil) {
             this.perfil = perfil;
         }
     }
@@ -219,8 +219,8 @@ public class UsuarioController {
     public static class AtualizarStatusRequest {
         private String status;
 
-        public String getStatus() { 
-        return status; 
+        public String getStatus() {
+        return status;
     }
         public void setStatus(String status) {
         this.status = status;

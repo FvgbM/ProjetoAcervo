@@ -18,7 +18,7 @@ import com.backend.acervo.repository.AtaRepository;
 public class ArquivoService {
 
     private static final long TAMANHO_MAXIMO_BYTES = 10L * 1024 * 1024;
-    private static final String TIPO_PDF = "application/pdf*";
+    private static final String TIPO_PDF = "application/pdf";
     private final ArquivoRepository arquivos;
     private final AtaRepository atas;
     private final AtaService ataService;
@@ -34,7 +34,7 @@ public class ArquivoService {
     public Arquivo salvarParaAta(Long ataId, MultipartFile file, Usuario usuario) {
         validarPermissaoUpload(usuario);
         Ata ata = ataService.buscarAcessivel(ataId, usuario).orElseThrow(() -> new IllegalArgumentException("Ata não encontrada ou sem acesso"));
-        
+
         if (ata.getArquivo() != null || arquivos.existsByAtaId(ata.getId())) { throw new IllegalArgumentException("A ata já possui arquivo vinculado");
         }
         return salvar(file, ata, usuario);
@@ -64,9 +64,9 @@ public class ArquivoService {
                 throw new IllegalStateException("Não foi possivel recuperar o arquivo PDF", e);
             }
         }
-    
+
     /** Pre validacao do UPLOAD */
-    public void validar(MultipartFile file) { 
+    public void validar(MultipartFile file) {
         obterEValidarConteudo(file);
     }
 
@@ -125,7 +125,7 @@ public class ArquivoService {
                 throw new IllegalArgumentException("Arquivo Vazio");
             }
             pdf.validarPdf(conteudo);
-            return conteudo;       
+            return conteudo;
         } catch (IOException e) {
             throw new SecurityException("Permissão Insuficiente para Upload de arquivos");
         }

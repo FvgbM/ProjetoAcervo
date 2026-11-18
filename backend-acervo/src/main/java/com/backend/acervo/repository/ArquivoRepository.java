@@ -8,7 +8,7 @@ import java.util.Optional;
 
 @Repository
 public interface ArquivoRepository extends JpaRepository<Arquivo, Long> {
-    
+
     Optional<Arquivo> findByNomeArmazenado(String nomeArmazenado);
     Optional<Arquivo> findByAtaId(Long ataId);
     boolean existsByNomeArmazenado(String nomeArmazenado);

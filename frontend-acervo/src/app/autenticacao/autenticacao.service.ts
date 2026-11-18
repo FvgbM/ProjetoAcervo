@@ -1,45 +1,40 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { Observable, BehaviorSubject, throwError } from 'rxjs';
+import { BehaviorSubject, Observable, throwError } from 'rxjs';
 import { catchError, switchMap, tap } from 'rxjs/operators';
 import { environment } from '../environment';
 import { Usuario } from '../models/usuario.model';
 
-
-@Injectable({
-  providedIn: 'root'
-})
+@Injectable({ providedIn: 'root' })
 export class AutenticacaoService {
-  private apiUrl = `${environment.apiUrl}/api/autenticacao`;
-  private currentUserSubject = new BehaviorSubject<Usuario | null>(null);
-  public currentUser = this.currentUserSubject.asObservable();
+  private readonly apiUrl = `${environment.apiUrl}/api/autenticacao`;
+  private readonly currentUserSubject = new BehaviorSubject<Usuario | null>(null);
+  readonly currentUser = this.currentUserSubject.asObservable();
 
-  constructor(private http: HttpClient) {
+  constructor(private readonly http: HttpClient) {
     this.carregarUsuarioLocalStorage();
   }
 
   private carregarUsuarioLocalStorage(): void {
     const user = localStorage.getItem('currentUser');
-    if (user) {
-      try {
-        this.currentUserSubject.next(JSON.parse(user));
-      } catch (e) {
-        console.error('Erro ao carregar usuário do localStorage:', e);
-        this.limparSessao();
-      }
+    if (!user) return;
+    try {
+      this.currentUserSubject.next(JSON.parse(user));
+    } catch {
+      this.limparSessao();
     }
   }
 
   private obterCsrf(): Observable<unknown> {
-    return this.http.get('${this.apiUrl}/csrf', { withCredentials: true});
+    return this.http.get(`${this.apiUrl}/csrf`, { withCredentials: true });
   }
 
-  login(email: string, senha: string): Observable<any> {
+  login(email: string, senha: string): Observable<unknown> {
     return this.obterCsrf().pipe(
-      switchMap(() => this.http.post('${this.apiUrl}/login', { email, senha },
-        {
-          withCredentials: true, headers: new HttpHeaders({ 'Content-Type': 'application/jason' })
-        }
+      switchMap(() => this.http.post(
+        `${this.apiUrl}/login`,
+        { email, senha },
+        { withCredentials: true, headers: new HttpHeaders({ 'Content-Type': 'application/json' }) }
       )),
       tap((response: any) => {
         if (response?.usuario) this.armazenarUsuario(response.usuario);
@@ -54,8 +49,10 @@ export class AutenticacaoService {
   }
 
   logout(): void {
-    this.limparSessao();
-    this.http.post(`${this.apiUrl}/logout`, {}).subscribe();
+    this.http.post(`${this.apiUrl}/logout`, {}, { withCredentials: true }).subscribe({
+      complete: () => this.limparSessao(),
+      error: () => this.limparSessao()
+    });
   }
 
   private limparSessao(): void {
@@ -63,115 +60,39 @@ export class AutenticacaoService {
     this.currentUserSubject.next(null);
   }
 
-  getUsuario(): any {
-  return this.currentUserSubject.value;
-}
+  getUsuario(): Usuario | null { return this.currentUserSubject.value; }
+  estaLogado(): boolean { return !!this.getUsuario(); }
+  isColaborador(): boolean { return this.getUsuario()?.perfil === 'COLABORADOR'; }
+  isProfessor(): boolean { return this.getUsuario()?.perfil === 'PROFESSOR'; }
+  isAluno(): boolean { return this.getUsuario()?.perfil === 'ALUNO'; }
+  isAdmin(): boolean { return this.getUsuario()?.perfil === 'ADMIN'; }
+  getPerfilUsuario(): string { return this.getUsuario()?.perfil || ''; }
+  isPrimeiroAcesso(): boolean { return this.getUsuario()?.primeiroLogin || false; }
 
-  estaLogado(): boolean {
-    return !!this.getUsuario();
-  }
-
-  isColaborador(): boolean {
-    const usuario = this.getUsuario();
-    return usuario?.perfil === 'COLABORADOR';
-  }
-
-  isProfessor(): boolean {
-    const usuario = this.getUsuario();
-    return usuario?.perfil === 'PROFESSOR';
-  }
-
-  isAluno(): boolean {
-    const usuario = this.getUsuario();
-    return usuario?.perfil === 'ALUNO';
-  }
-
-  isAdmin(): boolean {
-    const usuario = this.getUsuario();
-    return usuario?.perfil === 'ADMIN';
-  }
-
-  getPerfilUsuario(): string {
-    return this.getUsuario()?.perfil || '';
-  }
-
-  isPrimeiroAcesso(): boolean {
-    const usuario = this.getUsuario();
-    return usuario?.primeiroLogin || false;
-  }
-
-  trocarSenha(email: string, senhaAtual: string, novaSenha: string): Observable<any> {
-    const url = `${this.apiUrl}/alterar-senha`;
-    const body = { email, senhaAtual, novaSenha };
-
-    return this.http.post(url, body).pipe(
-      catchError(error => {
-        console.error('Erro ao trocar senha', error);
-        throw error;
-      })
+  trocarSenha(email: string, senhaAtual: string, novaSenha: string): Observable<unknown> {
+    return this.obterCsrf().pipe(
+      switchMap(() => this.http.post(`${this.apiUrl}/alterar-senha`, { email, senhaAtual, novaSenha }, { withCredentials: true })),
+      catchError(error => throwError(() => error))
     );
   }
 
-  redefinirSenha(token: string, novaSenha: string): Observable<any> {
+  redefinirSenha(token: string, novaSenha: string): Observable<unknown> {
     return this.obterCsrf().pipe(
-      switchMap(() =>
-        this.http.post(
-          '${this.apiUrl}/redefinir-senha',
-          { token, novaSenha },
-          {
-            withCredentials: true,
-            headers: new HttpHeaders({
-              'Content-Type': 'application/json'
-            })
-          }
-        )
-    ),
-    catchError(error => {
-      console.error('Erro ao redefinir a senha', error);
-      return throwError(() => error);
-    })
-  );
+      switchMap(() => this.http.post(`${this.apiUrl}/redefinir-senha`, { token, novaSenha }, { withCredentials: true })),
+      catchError(error => throwError(() => error))
+    );
   }
 
-  solicitarRecuperacaoSenha(email: string): Observable<any> {
+  solicitarRecuperacaoSenha(email: string): Observable<unknown> {
     return this.obterCsrf().pipe(
-      switchMap(() =>
-        this.http.post(
-          '${this.apiUrl}/solicitar-recuperacao',
-              { email },
-        {
-          withCredentials: true,
-          headers: new HttpHeaders({
-            'Content-Type': 'application/json',
-          })
-        }
-      )
-    ),
-    catchError(error => {
-      console.error('Erro ao solicitar a recuperacao de senha:', error);
-      return throwError(() => error);
-    })
-  );
+      switchMap(() => this.http.post(`${this.apiUrl}/solicitar-recuperacao`, { email }, { withCredentials: true })),
+      catchError(error => throwError(() => error))
+    );
   }
 
-  atualizarPerfilUsuario(usuarioAtualizado: Usuario): void {
-    this.armazenarUsuario(usuarioAtualizado);
-  }
-
-
-  podeCriarAtas(): boolean {
-    return this.isColaborador();
-  }
-
-  podeEditarAtas(): boolean {
-    return this.isColaborador();
-  }
-
-  podeExcluirAtas(): boolean {
-    return this.isColaborador();
-  }
-
-  podeGerenciarUsuarios(): boolean {
-    return this.isColaborador() || this.isAdmin();
-  }
+  atualizarPerfilUsuario(usuarioAtualizado: Usuario): void { this.armazenarUsuario(usuarioAtualizado); }
+  podeCriarAtas(): boolean { return this.isColaborador() || this.isAdmin(); }
+  podeEditarAtas(): boolean { return this.isColaborador() || this.isAdmin(); }
+  podeExcluirAtas(): boolean { return this.isAdmin(); }
+  podeGerenciarUsuarios(): boolean { return this.isAdmin(); }
 }

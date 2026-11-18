@@ -1,0 +1,17 @@
+# Dependências instaladas localmente
+node_modules/
+**/node_modules/
+
+# Artefatos de build
+**/target/
+**/dist/
+.angular/
+*.log
+
+# Configurações locais e dados sensíveis
+frontend-acervo/.env
+.env
+*.env.local
+
+# Arquivos gerados em execução
+uploads/
