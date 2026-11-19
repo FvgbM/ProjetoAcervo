@@ -1,0 +1,82 @@
+name: acervo-sprint4
+
+services:
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: acervo
+      MYSQL_USER: acervo_app
+      MYSQL_PASSWORD: ${MYSQL_APP_PASSWORD:?Defina MYSQL_APP_PASSWORD no arquivo .env}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Defina MYSQL_ROOT_PASSWORD no arquivo .env}
+    volumes:
+      - mysql_acervo:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -p$$MYSQL_ROOT_PASSWORD"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    networks:
+      - acervo-network
+
+  mailpit:
+    image: axllent/mailpit:v1.25.1
+    restart: unless-stopped
+    ports:
+      - "${MAILPIT_UI_PORT:-8025}:8025"
+    networks:
+      - acervo-network
+
+  backend:
+    build:
+      context: ./backend-acervo
+    image: fabiom1992/acervo-backend:sprint-4
+    restart: unless-stopped
+    environment:
+      DB_URL: jdbc:mysql://mysql:3306/acervo?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=America/Sao_Paulo
+      DB_USERNAME: acervo_app
+      DB_PASSWORD: ${MYSQL_APP_PASSWORD:?Defina MYSQL_APP_PASSWORD no arquivo .env}
+      UPLOAD_DIRECTORY: /app/uploads
+      FILE_ENCRYPTION_KEY_BASE64: ${FILE_ENCRYPTION_KEY_BASE64:?Defina FILE_ENCRYPTION_KEY_BASE64 no arquivo .env}
+      CORS_ALLOWED_ORIGINS: http://localhost:${FRONTEND_PORT:-8080}
+      FRONTEND_BASE_URL: http://localhost:${FRONTEND_PORT:-8080}
+      MAIL_HOST: mailpit
+      MAIL_PORT: "1025"
+      MAIL_USERNAME: local
+      MAIL_PASSWORD: local
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH: "false"
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE: "false"
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_REQUIRED: "false"
+    volumes:
+      - arquivos_acervo:/app/uploads
+    depends_on:
+      mysql:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
+    expose:
+      - "8080"
+    networks:
+      - acervo-network
+
+  frontend:
+    build:
+      context: ./frontend-acervo
+    image: fabiom1992/acervo-frontend:sprint-4
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-8080}:80"
+    depends_on:
+      backend:
+        condition: service_started
+    networks:
+      - acervo-network
+
+volumes:
+  mysql_acervo:
+  arquivos_acervo:
+
+networks:
+  acervo-network:
+    driver: bridge
