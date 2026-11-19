@@ -80,6 +80,7 @@ public class ControladorAutenticacao {
                     "nome", usuario.getNome(),
                     "email", usuario.getEmail(),
                     "perfil", usuario.getPerfil().name(),
+                    "status", usuario.getStatusUsuario().name(),
                     "primeiroLogin", usuario.isPrimeiroLogin())
             ));
         } catch (AuthenticationException exception) {
